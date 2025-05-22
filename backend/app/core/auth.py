@@ -1,48 +1,43 @@
 from typing import Optional
-from fastapi import Depends, HTTPException, status, Request, Response
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session as DbSession
 
 from app.db.session import get_db
 from app.models.user import User
-from app.services.session import get_valid_session
 from app.core.config import settings
+from app.services.user import get_user
+
+# Update the tokenUrl to match your new email authentication login endpoint
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/email/login")
 
 def get_current_user(
-    request: Request,
+    token: str = Depends(oauth2_scheme),
     db: DbSession = Depends(get_db)
 ) -> User:
-    session_id = request.cookies.get(settings.SESSION_COOKIE_NAME)
-    if not session_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-        )
-    
-    session = get_valid_session(db, session_id)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session expired or invalid",
-        )
-    
-    return session.user
-
-def set_session_cookie(response: Response, session_id: str):
-    """Set a session cookie on the response."""
-    response.set_cookie(
-        key=settings.SESSION_COOKIE_NAME,
-        value=session_id,
-        httponly=settings.SESSION_COOKIE_HTTPONLY,
-        secure=settings.SESSION_COOKIE_SECURE,
-        samesite=settings.SESSION_COOKIE_SAMESITE,
-        max_age=settings.SESSION_EXPIRY_DAYS * 24 * 60 * 60,  # in seconds
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
     )
-
-def delete_session_cookie(response: Response):
-    """Delete the session cookie from the response."""
-    response.delete_cookie(
-        key=settings.SESSION_COOKIE_NAME,
-        httponly=settings.SESSION_COOKIE_HTTPONLY,
-        secure=settings.SESSION_COOKIE_SECURE,
-        samesite=settings.SESSION_COOKIE_SAMESITE,
-    )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: Optional[int] = payload.get("user_id")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    try:
+        user = get_user(db, user_id)
+    except HTTPException:
+        raise credentials_exception
+        
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Inactive user"
+        )
+        
+    return user

@@ -7,24 +7,28 @@ class Settings(BaseSettings):
     admin_email: str = "admin@example.com"
     items_per_page: int = 10
     
-    # JWT Settings (keeping for reference)
+    # JWT Settings
     SECRET_KEY: str 
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     
-    # Session Settings
-    SESSION_EXPIRY_DAYS: int
-    SESSION_COOKIE_NAME: str
-    SESSION_COOKIE_SECURE: bool
-    SESSION_COOKIE_HTTPONLY: bool
-    SESSION_COOKIE_SAMESITE: str
-    
-    # Database Settings - match the env variable names exactly
+    # Database Settings
     user: str
     password: str
     host: str
     port: str
     dbname: str
+    
+    # Firebase Settings
+    FIREBASE_PROJECT_ID: str
+    FIREBASE_CLIENT_EMAIL: str
+    FIREBASE_PRIVATE_KEY: str
+
+    PHONE_AUTH_ENABLED: bool = True
+    
+    # Google OAuth Settings
+    GOOGLE_AUTH_ENABLED: bool = True
+    GOOGLE_CLIENT_ID: str
     
     @property
     def DATABASE_URL(self) -> str:
@@ -33,7 +37,7 @@ class Settings(BaseSettings):
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
-        "extra": "allow",  # Allow extra fields
+        "extra": "allow",
     }
 
 settings = Settings()

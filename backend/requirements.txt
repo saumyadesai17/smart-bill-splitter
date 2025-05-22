@@ -11,5 +11,10 @@ psycopg2-binary
 python-multipart
 pydantic-settings
 pydantic[email]
-bcrypt=4.0.1
+bcrypt==4.0.1
 freezegun
+python-jose[cryptography]
+alembic
+firebase-admin
+google-auth>=2.15.0
+pytest-mock
